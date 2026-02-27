@@ -30,7 +30,7 @@ jobs:
       - name: Checkout this repository
         uses: actions/checkout@v6
 
-      - name: Create release tag
+      - name: Validate release tag
         id: determine-tag
         run: |
           if [ -n "${{ github.event.inputs.tag_version }}" ]; then
@@ -43,23 +43,50 @@ jobs:
             exit 1
           fi
           echo "has_tag=true" >> $GITHUB_OUTPUT
+          echo "Determined release tag: $TAG_VERSION"
+
+  test_release:
+    # runs-on: [self-hosted, ubuntu-22-04, regular]
+    needs: [check_tags]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node Environment
+        uses: ./.github/setup-node
+
+      - name: Setup FastEdge Run CLI (Linux x64)
+        uses: ./.github/setup-fastedge-cli
+        with:
+          cli_version: ${{ inputs.cli_version }}
+          github_token: ${{ github.token }}
+
+      - name: Build (including WASM test apps)
+        run: |
+          pnpm run build:ci-test
+
+      - name: Run tests
+        run: |
+          pnpm test
 
   # fossa:
   #   uses: ./.github/workflows/fossa.yaml
-  #   needs: [check_tags]
+  #   needs: [test_release]
   #   secrets:
   #     FOSSA_PUB_API_KEY: ${{ secrets.FOSSA_PUB_API_KEY }}
 
   download_fastedge_cli:
     uses: ./.github/workflows/download-cli.yml
-    needs: [check_tags]
+    needs: [test_release]
     if: ${{ needs.check_tags.outputs.has_release_tag == 'true' }}
     with:
       cli_version: ${{ inputs.cli_version }}
 
   build_debugger:
     # needs: ["fossa", "check_tags", "download_fastedge_cli"]
-    needs: ["check_tags", "download_fastedge_cli"]
+    needs: ["test_release", "download_fastedge_cli"]
     if: ${{ needs.check_tags.outputs.has_release_tag == 'true' }}
     # runs-on: [self-hosted, ubuntu-22-04, regular]
     runs-on: ubuntu-latest
@@ -77,13 +104,19 @@ jobs:
           path: cli-artifacts
           merge-multiple: false
 
-      - name: Merge CLI binaries into fastedge-cli directory
+      - name: Merge all platform binaries into fastedge-run/
         run: |
           mkdir -p fastedge-run
-          # Copy all binaries from artifacts to fastedge-run/
-          find cli-artifacts -type f -name 'fastedge-run*' -exec cp {} fastedge-run/ \;
+          find cli-artifacts -type f -name 'fastedge-run-linux-x64' -exec cp {} fastedge-run/ \;
+          find cli-artifacts -type f -name 'fastedge-run-darwin-arm64' -exec cp {} fastedge-run/ \;
+          find cli-artifacts -type f -name 'fastedge-run.exe' -exec cp {} fastedge-run/ \;
           # Copy METADATA.json from any artifact (they're all the same)
           find cli-artifacts -type f -name 'METADATA.json' -exec cp {} fastedge-run/ \; -quit
+
+          # Restore execute permissions (GitHub Actions artifacts strip execute bits)
+          chmod +x fastedge-run/fastedge-run-darwin-arm64
+          chmod +x fastedge-run/fastedge-run-linux-x64
+          echo "✅ Execute permissions set"
 
           # Verify all platform binaries exist
           echo "Verifying CLI binaries..."
@@ -96,10 +129,6 @@ jobs:
       - name: Build Debugger code
         run: |
           pnpm run build
-
-      - name: Run tests
-        run: |
-          pnpm test
 
       - name: Zip Debugger distribution
         run: |
