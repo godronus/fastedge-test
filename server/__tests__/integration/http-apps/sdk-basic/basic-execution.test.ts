@@ -91,7 +91,7 @@ describe.sequential('HTTP WASM Runner - Basic Execution', () => {
       expect(response.body).toContain('You made a request');
     });
 
-    it('should capture logs from FastEdge-run process', async () => {
+    it('should capture logs from WASM application', async () => {
 
       const response = await runner.execute({
         path: '/',
@@ -101,9 +101,9 @@ describe.sequential('HTTP WASM Runner - Basic Execution', () => {
       });
 
       expect(response.logs.length).toBeGreaterThan(0);
-      // Check for FastEdge-run log messages
-      const hasInfoLog = response.logs.some(log => log.level === 4); // Error level for FastEdge-run INFO logs
-      expect(hasInfoLog).toBe(true);
+      // console.log() from WASM app comes through stdout at level 2
+      const hasAppLog = response.logs.some(log => log.level === 2 && log.message.includes('test-logging-string'));
+      expect(hasAppLog).toBe(true);
     });
 
     it('should handle path with query parameters', async () => {
