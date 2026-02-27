@@ -21,7 +21,7 @@ jobs:
         run: |
           if [ "${{ inputs.cli_version }}" == "latest" ] || [ -z "${{ inputs.cli_version }}" ]; then
             echo "Fetching latest release version..."
-            LATEST_VERSION=$(curl -s https://api.github.com/repos/G-Core/FastEdge-lib/releases/latest | jq -r .tag_name)
+            LATEST_VERSION=$(curl -fsSL https://api.github.com/repos/G-Core/FastEdge-lib/releases/latest | jq -r .tag_name)
             echo "Latest version is $LATEST_VERSION"
             echo "version=$LATEST_VERSION"  >> $GITHUB_OUTPUT
           else
@@ -62,8 +62,8 @@ jobs:
       - name: Download FastEdge-lib assets
         run: |
           echo "Downloading version $VERSION for ${{ matrix.os }}"
-          curl -L -o fastedge-run-$VERSION-${{ matrix.file_name }}.${{ matrix.file_ext }} https://github.com/G-Core/FastEdge-lib/releases/download/$VERSION/fastedge-run-$VERSION-${{ matrix.file_name }}.${{ matrix.file_ext }}
-          curl -L -o fastedge-run-$VERSION-${{ matrix.file_name }}.${{ matrix.file_ext }}.sha256 https://github.com/G-Core/FastEdge-lib/releases/download/$VERSION/fastedge-run-$VERSION-${{ matrix.file_name }}.${{ matrix.file_ext }}.sha256
+          curl --fail-with-body -sSL -o fastedge-run-$VERSION-${{ matrix.file_name }}.${{ matrix.file_ext }} https://github.com/G-Core/FastEdge-lib/releases/download/$VERSION/fastedge-run-$VERSION-${{ matrix.file_name }}.${{ matrix.file_ext }}
+          curl --fail-with-body -sSL -o fastedge-run-$VERSION-${{ matrix.file_name }}.${{ matrix.file_ext }}.sha256 https://github.com/G-Core/FastEdge-lib/releases/download/$VERSION/fastedge-run-$VERSION-${{ matrix.file_name }}.${{ matrix.file_ext }}.sha256
 
       - name: Convert Windows SHA256 to Linux format
         if: ${{ matrix.os == 'windows-latest' }}
@@ -85,13 +85,14 @@ jobs:
 
       - name: Rename and copy fastedge-run
         run: |
+          mkdir -p fastedge-run
           if [[ ${{ matrix.os }} == 'windows-latest' ]]; then
             cp fastedge-run-$VERSION-${{ matrix.file_name }}/fastedge-run.exe ./fastedge-run/fastedge-run.exe
           else
             cp fastedge-run-$VERSION-${{ matrix.file_name }}/fastedge-run ./fastedge-run/fastedge-run-${{ matrix.target }}
           fi
 
-      - name: Create a RELEASE.json file
+      - name: Create a METADATA.json file
         run: |
           echo "{\"fastedge_run_version\": \"$VERSION\"}" > fastedge-run/METADATA.json
 

@@ -44,7 +44,7 @@
     "dev": "npm-run-all -p dev:backend dev:frontend",
     "dev:backend": "node esbuild/watch-server.js & sleep 2 && node --watch dist/server.js",
     "dev:frontend": "cd frontend && pnpm exec vite",
-    "test": "npm-run-all -p test:unit test:integration",
+    "test": "npm-run-all -s test:unit test:integration",
     "test:unit": "npm-run-all -p test:backend test:frontend",
     "test:backend": "vitest run",
     "test:frontend": "cd frontend && vitest run",
