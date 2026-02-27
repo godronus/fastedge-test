@@ -28,8 +28,9 @@ runs:
       run: |
         if [ "$CLI_VERSION_INPUT" == "latest" ] || [ -z "$CLI_VERSION_INPUT" ]; then
           echo "Fetching latest release version..."
-          CLI_VERSION=$(curl -fsSL \
-            -H "Authorization: Bearer $GH_TOKEN" \
+          CURL_ARGS=(-fsSL)
+          [ -n "$GH_TOKEN" ] && CURL_ARGS+=(-H "Authorization: Bearer $GH_TOKEN")
+          CLI_VERSION=$(curl "${CURL_ARGS[@]}" \
             https://api.github.com/repos/G-Core/FastEdge-lib/releases/latest | jq -r .tag_name)
         else
           CLI_VERSION="$CLI_VERSION_INPUT"
@@ -43,6 +44,7 @@ runs:
         cp "fastedge-run-$CLI_VERSION-x86_64-unknown-linux-gnu/fastedge-run" fastedge-run/fastedge-run-linux-x64
         chmod +x fastedge-run/fastedge-run-linux-x64
         echo "✅ fastedge-run $CLI_VERSION installed at fastedge-run/fastedge-run-linux-x64"
-        fastedge-run/fastedge-run-linux-x64 --help > /dev/null && echo "✅ Binary is executable"
+        fastedge-run/fastedge-run-linux-x64 --help > /dev/null
+        echo "✅ Binary is executable"
 
         echo "cli_version=$CLI_VERSION" >> $GITHUB_OUTPUT

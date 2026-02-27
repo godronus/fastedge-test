@@ -104,9 +104,10 @@ jobs:
           path: cli-artifacts
           merge-multiple: false
 
-      - name: Merge macOS and Windows binaries into fastedge-run/
+      - name: Merge all platform binaries into fastedge-run/
         run: |
-          # Linux binary already set up by setup-fastedge-cli action
+          mkdir -p fastedge-run
+          find cli-artifacts -type f -name 'fastedge-run-linux-x64' -exec cp {} fastedge-run/ \;
           find cli-artifacts -type f -name 'fastedge-run-darwin-arm64' -exec cp {} fastedge-run/ \;
           find cli-artifacts -type f -name 'fastedge-run.exe' -exec cp {} fastedge-run/ \;
           # Copy METADATA.json from any artifact (they're all the same)
