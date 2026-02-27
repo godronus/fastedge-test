@@ -17,8 +17,10 @@ rust_host/
 # Internal Dev code
 configs/
 
-# Test applications
-wasm/
+# Test applications (ignore built binaries, track directory structure)
+wasm/**/*.wasm
+wasm/**/*.wat
+wasm/**/*.wasm.map
 
 # DotEnv files
 .env
