@@ -30,7 +30,8 @@
     "llms.txt"
   ],
   "scripts": {
-    "build": "npm-run-all -p build:debugger build:lib build:test-apps",
+    "build": "npm-run-all -p build:debugger build:lib",
+    "build:ci-test": "npm-run-all -p build build:test-apps",
     "build:debugger": "npm-run-all -p build:schemas build:backend build:frontend",
     "build:lib": "node esbuild/bundle-lib.js",
     "build:schemas": "ts-node --project tsconfig.scripts.json scripts/generate-schemas.ts",
