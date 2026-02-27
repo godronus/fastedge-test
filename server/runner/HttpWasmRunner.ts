@@ -6,6 +6,7 @@
  */
 
 import { spawn, ChildProcess } from "child_process";
+import * as http from "http";
 import type {
   IWasmRunner,
   WasmType,
@@ -286,6 +287,41 @@ export class HttpWasmRunner implements IWasmRunner {
   }
 
   /**
+   * Probe port with a single HTTP GET, returning true if any response is received.
+   * Uses Node.js http module with explicit content-length: 0 so that wasi-http
+   * runtimes (fastedge-run) immediately signal EOF to the WASM request body
+   * stream. Without this, newer fastedge-run builds hold the body stream open
+   * on keep-alive connections, causing the WASM's event.request.text() to hang
+   * indefinitely and never send a response.
+   */
+  private probePort(port: number, timeoutMs: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      const req = http.request(
+        {
+          hostname: "localhost",
+          port,
+          path: "/",
+          method: "GET",
+          headers: {
+            "content-length": "0",
+            connection: "close",
+          },
+        },
+        (res) => {
+          res.resume(); // drain so the socket can close
+          resolve(true);
+        }
+      );
+      req.setTimeout(timeoutMs, () => {
+        req.destroy();
+        resolve(false);
+      });
+      req.on("error", () => resolve(false));
+      req.end();
+    });
+  }
+
+  /**
    * Wait for server to be ready by polling
    */
   private async waitForServerReady(
@@ -295,23 +331,17 @@ export class HttpWasmRunner implements IWasmRunner {
     const startTime = Date.now();
 
     while (Date.now() - startTime < timeoutMs) {
-      try {
-        // Allow up to 5 seconds per request for WASMs that make downstream calls
-        const response = await fetch(`http://localhost:${port}/`, {
-          signal: AbortSignal.timeout(5000),
-        });
-        // Any response means the server is up
-        return;
-      } catch (error) {
-        // Check if process crashed
-        if (this.process && this.process.exitCode !== null) {
-          throw new Error(
-            `FastEdge-run process exited with code ${this.process.exitCode} before server started`
-          );
-        }
-        // Server not ready yet, wait and retry
-        await new Promise((resolve) => setTimeout(resolve, 100));
+      const ready = await this.probePort(port, 5000);
+      if (ready) return;
+
+      // Check if process crashed
+      if (this.process && this.process.exitCode !== null) {
+        throw new Error(
+          `FastEdge-run process exited with code ${this.process.exitCode} before server started`
+        );
       }
+      // Server not ready yet, wait and retry
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     // Collect diagnostics for timeout error
