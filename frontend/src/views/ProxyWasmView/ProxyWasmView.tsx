@@ -37,6 +37,8 @@ export function ProxyWasmView() {
 
     // Config state
     properties,
+    origin,
+    setOrigin,
     client,
     edge,
     dotenv,
@@ -80,7 +82,7 @@ export function ProxyWasmView() {
         ...hookCall,
         request_headers: finalHeaders,
         logLevel,
-      }, { client, edge });
+      }, { client, edge }, origin);
 
       // Update hook results and final response
       setHookResults(newHookResults);
@@ -188,7 +190,7 @@ export function ProxyWasmView() {
         onClientChange={setClient}
         onEdgeChange={setEdge}
       >
-        <OriginSection url={url} headers={requestHeaders} onHeadersChange={setRequestHeaders} />
+        <OriginSection url={url} headers={requestHeaders} onHeadersChange={setRequestHeaders} origin={origin} onOriginChange={setOrigin} />
         <div className={contextStyles.section}>
           <h4 className={contextStyles.sectionTitle}>Properties</h4>
           <p className={contextStyles.hint}>
